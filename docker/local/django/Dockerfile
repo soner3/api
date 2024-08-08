@@ -29,11 +29,12 @@ WORKDIR ${APP_HOME}
 RUN apt-get update && apt-get install --no-install-recommends -y \
   sudo git bash-completion nano ssh
 
+# Erstelle die Gruppe und den Benutzer
 RUN addgroup --system django && \
   adduser --system --ingroup django django && \
   mkdir -p ${APP_HOME}/staticfiles && \
   mkdir -p ${APP_HOME}/core_apps/users/migrations && \
-  chown -R root:root ${APP_HOME} && \
+  chown -R django:django ${APP_HOME} && \
   chmod -R 775 ${APP_HOME}
 
 RUN apt-get update && apt-get install --no-install-recommends -y \
@@ -62,7 +63,7 @@ USER root
 RUN chown -R django:django ${APP_HOME} && \
     chmod -R 775 ${APP_HOME}
 
-# Switch back to django user
-# USER django
+# Wechsel zu django user
+USER django
 
 ENTRYPOINT [ "/entrypoint" ]
