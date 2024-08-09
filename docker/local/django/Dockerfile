@@ -21,21 +21,21 @@ ARG BUILD_ENVIRONMENT=local
 ARG APP_HOME=/app
 
 ENV PYTHONDONTWRITEBYTECODE 1
+
 ENV PYTHONUNBUFFERED 1
+
 ENV BUILD_ENV ${BUILD_ENVIRONMENT}
 
 WORKDIR ${APP_HOME}
 
-RUN apt-get update && apt-get install --no-install-recommends -y \
+RUN apt-get update && apt-get install --no-install-recommends -y \  
   sudo git bash-completion nano ssh
 
-# Erstelle die Gruppe und den Benutzer
 RUN addgroup --system django && \
   adduser --system --ingroup django django && \
   mkdir -p ${APP_HOME}/staticfiles && \
-  mkdir -p ${APP_HOME}/core_apps/users/migrations && \
-  chown -R django:django ${APP_HOME} && \
-  chmod -R 775 ${APP_HOME}
+  chown django:django ${APP_HOME}/staticfiles && \
+  chmod 775 ${APP_HOME}/staticfiles
 
 RUN apt-get update && apt-get install --no-install-recommends -y \
   libpq-dev \
@@ -48,22 +48,31 @@ COPY --from=python-build-stage /usr/src/app/wheels /wheels/
 RUN pip install --no-cache-dir --no-index --find-links=/wheels/ /wheels/* \
   && rm -rf /wheels/
 
-COPY ./docker/local/django/entrypoint.sh /entrypoint
+COPY --chown=django:django ./docker/local/django/entrypoint.sh /entrypoint
 RUN sed -i 's/\r$//g' /entrypoint
 RUN chmod +x /entrypoint
 
-COPY ./docker/local/django/start.sh /start
+COPY --chown=django:django ./docker/local/django/start.sh /start
 RUN sed -i 's/\r$//g' /start
 RUN chmod +x /start
 
-COPY . ${APP_HOME}
+COPY --chown=django:django ./docker/local/django/celery/worker/start.sh /start-celeryworker
+RUN sed -i 's/\r$//g' /start-celeryworker
+RUN chmod +x /start-celeryworker
 
-# Set permissions with root
-USER root
-RUN chown -R django:django ${APP_HOME} && \
-    chmod -R 775 ${APP_HOME}
+COPY --chown=django:django ./docker/local/django/celery/beat/start.sh /start-celerybeat
+RUN sed -i 's/\r$//g' /start-celerybeat
+RUN chmod +x /start-celerybeat
 
-# Wechsel zu django user
-USER django
+COPY --chown=django:django ./docker/local/django/celery/flower/start.sh /start-flower
+RUN sed -i 's/\r$//g' /start-flower
+RUN chmod +x /start-flower
+
+
+COPY --chown=django:django . ${APP_HOME}
+
+RUN chown django:django ${APP_HOME}
+
+# USER django
 
 ENTRYPOINT [ "/entrypoint" ]
